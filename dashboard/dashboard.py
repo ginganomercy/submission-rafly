@@ -6,7 +6,7 @@ import seaborn as sns
 # Muat dataset
 @st.cache_data
 def load_data():
-    df = pd.read_csv("../data/day.csv")
+    df = pd.read_csv("https://raw.githubusercontent.com/ginganomercy/submission-rafly/main/data/day.csv")
     df['dteday'] = pd.to_datetime(df['dteday'])
     return df
 
