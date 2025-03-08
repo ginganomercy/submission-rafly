@@ -1,8 +1,5 @@
 # Submission Dicoding "Belajar Analisis Data dengan Python"
 
-## Preview
-![image](https://github.com/user-attachments/assets/6d23adc1-19a5-4865-aa51-a82a35b762a9)
-
 
 ## Project Analisis Data
 
@@ -43,7 +40,7 @@ Proyek ini bertujuan untuk menganalisis data pada Bike Sharing Dataset. Tujuan a
     Atau bisa dengan kunjungi website ini [Project Data Analytics](https://dashboard-bike-sharing-rafly.streamlit.app/)
 
 
-## terinsiprasi
+## Terinsiprasi
 project ini dimodifikasi dan terinspirasi dari [github arini](https://github.com/ariniamsr/bike-sharing/tree/main)
 
 ## Setup Environment - Shell/Terminal
