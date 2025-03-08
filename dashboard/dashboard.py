@@ -1,114 +1,105 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns
+import datetime
 
-# Load dataset
-data_path = 'dashboard/all_data.csv'
-df = pd.read_csv(data_path)
+# Load Data
+day_df = pd.read_csv("data/day.csv")
+hour_df = pd.read_csv("data/hour.csv")
 
-# Convert 'datetime' column to datetime type
-df['datetime'] = pd.to_datetime(df['datetime'])
-df['hour'] = df['datetime'].dt.hour
-df['day'] = df['datetime'].dt.day
-df['month'] = df['datetime'].dt.month
-df['year'] = df['datetime'].dt.year
-df['weekday'] = df['datetime'].dt.weekday
-df['is_weekend'] = df['weekday'] >= 5
-df['is_holiday'] = df['holiday'] == 1
+# Preprocessing
+day_df['dteday'] = pd.to_datetime(day_df['dteday'])
+hour_df['dteday'] = pd.to_datetime(hour_df['dteday'])
+day_df['day_name'] = day_df['dteday'].dt.day_name()
 
-st.title("Bike Sharing Data Dashboard")
-st.sidebar.header("Filter Data")
+# Filter date range
+min_date = day_df["dteday"].min()
+max_date = day_df["dteday"].max()
 
-year_filter = st.sidebar.multiselect("Select Year", df['year'].unique(), default=df['year'].unique())
-df = df[df['year'].isin(year_filter)]
+st.set_page_config(page_title="Bike Sharing Dashboard", layout="wide")
+st.title("🚴‍♂️ Bike Sharing Data Dashboard")
 
-# 1. Pola Penggunaan Sepeda per Jam
-st.subheader("Pola Penggunaan Sepeda per Jam")
-hourly_counts = df.groupby('hour')['count'].mean()
-plt.figure(figsize=(10, 5))
-sns.lineplot(x=hourly_counts.index, y=hourly_counts.values, marker='o')
-plt.xlabel("Jam dalam Sehari")
-plt.ylabel("Rata-rata Penyewaan Sepeda")
-plt.title("Pola Penggunaan Sepeda per Jam")
-st.pyplot(plt)
-st.write("Puncak penggunaan terjadi pada jam sibuk kerja (pagi dan sore).")
+# Sidebar
+with st.sidebar:
+    st.image("BIKE RENT.png")
+    start_date, end_date = st.date_input(
+        label='Rentang Waktu',
+        min_value=min_date,
+        max_value=max_date,
+        value=[min_date, max_date]
+    )
 
-# 2. Tren Penggunaan Sepeda Harian dan Tahunan
-st.subheader("Tren Penggunaan Sepeda Harian dan Tahunan")
-daily_counts = df.groupby('datetime')['count'].sum()
-plt.figure(figsize=(12, 5))
-sns.lineplot(x=daily_counts.index, y=daily_counts.values)
-plt.xlabel("Tanggal")
-plt.ylabel("Total Penyewaan Sepeda")
-plt.title("Tren Penyewaan Sepeda Harian")
-st.pyplot(plt)
-st.write("Terlihat peningkatan penggunaan dari tahun ke tahun dan pola musiman yang jelas.")
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["Tren Penyewaan", "Musim & Cuaca", "Faktor Lingkungan", "Perbandingan Penyewa"])
 
-# 3. Pengaruh Musim terhadap Penyewaan Sepeda
-st.subheader("Pengaruh Musim terhadap Penyewaan Sepeda")
-season_counts = df.groupby('season')['count'].mean()
-plt.figure(figsize=(8, 5))
-sns.barplot(x=season_counts.index, y=season_counts.values, palette="coolwarm")
-plt.xlabel("Musim")
-plt.ylabel("Rata-rata Penyewaan")
-plt.title("Rata-rata Penyewaan Sepeda per Musim")
-st.pyplot(plt)
-st.write("Musim gugur memiliki jumlah penyewaan tertinggi, sedangkan musim dingin terendah.")
+with tab1:
+    st.subheader("Tren Penyewaan Sepeda")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.lineplot(x=day_df['dteday'], y=day_df['cnt'], ax=ax)
+    ax.set_title("Tren Penyewaan Sepeda Harian")
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("***Insight:*** Penyewaan sepeda menunjukkan tren peningkatan dari tahun ke tahun dengan pola fluktuatif harian dan bulanan yang konsisten.")
 
-# 4. Perbedaan Hari Kerja dan Akhir Pekan
-st.subheader("Perbedaan Hari Kerja vs Akhir Pekan")
-weekend_counts = df.groupby('is_weekend')['count'].mean()
-plt.figure(figsize=(6, 4))
-sns.barplot(x=['Hari Kerja', 'Akhir Pekan'], y=weekend_counts.values, palette="viridis")
-st.pyplot(plt)
-st.write("Akhir pekan memiliki lebih banyak penyewaan untuk keperluan rekreasi.")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    monthly_avg = day_df.groupby('mnth')['cnt'].mean().reset_index()
+    sns.lineplot(x=monthly_avg['mnth'], y=monthly_avg['cnt'], ax=ax)
+    ax.set_title("Tren Penyewaan Sepeda per Bulan")
+    ax.set_xlabel("Bulan")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("Insight: Puncak penggunaan terjadi pada bulan-bulan musim panas dan awal musim gugur, sementara musim dingin menunjukkan penurunan signifikan.")
 
-# 5. Pengaruh Cuaca terhadap Penyewaan
-st.subheader("Pengaruh Cuaca terhadap Penyewaan Sepeda")
-weather_counts = df.groupby('weather')['count'].mean()
-plt.figure(figsize=(6, 4))
-sns.barplot(x=weather_counts.index, y=weather_counts.values, palette="magma")
-st.pyplot(plt)
-st.write("Cuaca cerah memiliki jumlah penyewaan tertinggi, sedangkan hujan terendah.")
+with tab2:
+    st.subheader("Penyewaan Berdasarkan Musim & Cuaca")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.boxplot(x='season', y='cnt', data=day_df, ax=ax)
+    ax.set_title("Penyewaan Sepeda Berdasarkan Musim")
+    ax.set_xlabel("Musim")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("Insight: Penyewaan tertinggi terjadi pada musim gugur, diikuti oleh musim panas. Musim dingin memiliki jumlah penyewaan terendah.")
 
-# 6. Puncak dan Penurunan Penyewaan per Bulan
-st.subheader("Puncak dan Penurunan Penyewaan Sepeda per Bulan")
-monthly_counts = df.groupby('month')['count'].mean()
-plt.figure(figsize=(10, 5))
-sns.lineplot(x=monthly_counts.index, y=monthly_counts.values, marker='o')
-st.pyplot(plt)
-st.write("Puncak penyewaan terjadi pada musim panas dan awal musim gugur.")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.boxplot(x='weathersit', y='cnt', data=day_df, ax=ax)
+    ax.set_title("Penyewaan Sepeda Berdasarkan Kondisi Cuaca")
+    ax.set_xlabel("Kondisi Cuaca")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("Insight: Cuaca cerah mendorong penyewaan sepeda tertinggi, sementara hujan dan kondisi buruk menurunkan jumlah penyewaan secara signifikan.")
 
-# 7. Hubungan antara Suhu, Kelembaban, dan Penyewaan Sepeda
-st.subheader("Hubungan antara Suhu, Kelembaban, dan Penyewaan Sepeda")
-plt.figure(figsize=(10, 5))
-sns.scatterplot(x=df['temp'], y=df['count'], alpha=0.5)
-st.pyplot(plt)
-st.write("Ada korelasi positif antara suhu dan penyewaan sepeda.")
+with tab3:
+    st.subheader("Pengaruh Faktor Lingkungan")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x='temp', y='cnt', data=day_df, ax=ax)
+    ax.set_title("Pengaruh Suhu terhadap Penyewaan Sepeda")
+    ax.set_xlabel("Suhu (Normalized)")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("Insight: Penyewaan sepeda meningkat pada suhu yang nyaman dan menurun pada suhu ekstrem.")
 
-# 8. Perbedaan Hari Kerja dan Hari Libur
-st.subheader("Perbedaan Hari Kerja vs Hari Libur")
-holiday_counts = df.groupby('is_holiday')['count'].mean()
-plt.figure(figsize=(6, 4))
-sns.barplot(x=['Hari Kerja', 'Hari Libur'], y=holiday_counts.values, palette="coolwarm")
-st.pyplot(plt)
-st.write("Hari libur memiliki jumlah penyewaan yang lebih tinggi.")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x='hum', y='cnt', data=day_df, ax=ax)
+    ax.set_title("Pengaruh Kelembaban terhadap Penyewaan Sepeda")
+    ax.set_xlabel("Kelembaban (Normalized)")
+    ax.set_ylabel("Jumlah Penyewaan")
+    st.pyplot(fig)
+    st.write("Insight: Kelembaban tinggi memiliki korelasi negatif dengan jumlah penyewaan sepeda.")
 
-# 9. Tren Penggunaan Sepeda dari Tahun ke Tahun
-st.subheader("Tren Penggunaan Sepeda dari Tahun ke Tahun")
-yearly_counts = df.groupby('year')['count'].sum()
-plt.figure(figsize=(8, 5))
-sns.barplot(x=yearly_counts.index, y=yearly_counts.values, palette="Blues")
-st.pyplot(plt)
-st.write("Peningkatan jumlah penyewaan sepeda yang signifikan di tahun 2012 dibandingkan 2011.")
+with tab4:
+    st.subheader("Perbandingan Penyewa")
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.lineplot(x='dteday', y='casual', data=day_df, label='Casual', ax=ax)
+    sns.lineplot(x='dteday', y='registered', data=day_df, label='Registered', ax=ax)
+    ax.set_title("Perbandingan Penyewa Casual dan Registered")
+    ax.set_xlabel("Tanggal")
+    ax.set_ylabel("Jumlah Penyewa")
+    ax.legend()
+    st.pyplot(fig)
+    st.write("Insight: Penyewa terdaftar jauh lebih dominan dibandingkan penyewa kasual. Penyewa kasual cenderung lebih aktif pada akhir pekan dan musim panas.")
 
-# 10. Perbedaan Penyewa Biasa vs Terdaftar
-st.subheader("Perbedaan Penyewa Biasa vs Terdaftar")
-user_type_counts = df[['casual', 'registered']].sum()
-plt.figure(figsize=(6, 4))
-sns.barplot(x=['Casual', 'Registered'], y=user_type_counts.values, palette="Set2")
-st.pyplot(plt)
-st.write("Penyewa terdaftar lebih dominan dibanding penyewa biasa, dengan pola penggunaan yang mirip.")
-
-st.write("Dashboard ini memberikan wawasan mendalam tentang pola penggunaan sepeda berdasarkan berbagai faktor seperti waktu, musim, cuaca, dan jenis pengguna.")
+if __name__ == "__main__":
+    st.write("@BIKE RENT 2025, All Rights Reserved")
